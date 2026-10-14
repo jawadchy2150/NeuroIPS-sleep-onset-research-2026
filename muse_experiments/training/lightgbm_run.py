@@ -27,6 +27,7 @@ from muse_experiments.models.lightgbm import build_regressor
 from muse_experiments.preprocessing.features import METADATA_COLUMNS
 from muse_experiments.splits import (
     assert_disjoint,
+    locked_validation_split,
     official_muse_split,
     participant_split,
 )
@@ -60,6 +61,11 @@ def split_subjects(df, cfg):
             df[column],
             val_size=cfg["split"]["val_size"],
             seed=cfg["split"]["seed"],
+        )
+    elif strategy == "locked_validation_subjects":
+        train_idx, val_idx = locked_validation_split(
+            df[column].to_numpy(),
+            cfg["split"]["validation_subjects"],
         )
     else:
         raise ValueError(f"unknown split strategy: {strategy}")

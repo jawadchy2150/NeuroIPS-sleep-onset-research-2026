@@ -51,6 +51,70 @@ def get_n2_onset(vhdr):
     raise ValueError(f"N2 onset not found: {vhdr}")
 
 
+def rows_for_recording(root, cfg, vhdr):
+    """Feature rows for one recording, using the official pre-N2 rules.
+
+    A recording that ends before the first full window yields no rows.
+    A wrong sampling rate or a missing Muse channel is an error.
+    """
+    channels = list(cfg["data"]["channels"])
+    bands = cfg["data"]["bands"]
+    window_seconds = cfg["data"]["window_seconds"]
+    sampling_hz = cfg["data"]["sampling_hz"]
+    window_samples = int(cfg["data"]["window_samples"])
+    cap_seconds = cfg["data"]["cap_seconds"]
+    test_value = cfg["split"]["test_value"]
+    subject = vhdr.parents[2].name
+    session = vhdr.parents[1].name
+    n2_onset = get_n2_onset(vhdr)
+    has_test = subject_has_official_test(root, subject, test_value)
+    raw = mne.io.read_raw_brainvision(
+        str(vhdr),
+        preload=False,
+        verbose="ERROR",
+    )
+    try:
+        missing = [
+            channel for channel in channels if channel not in raw.ch_names
+        ]
+        if missing:
+            raise ValueError(f"{subject}/{session} missing {missing}")
+        sfreq = float(raw.info["sfreq"])
+        if abs(sfreq - sampling_hz) > 1e-6:
+            raise ValueError(
+                f"{subject}/{session} is {sfreq} Hz, expected {sampling_hz}"
+            )
+        if abs(window_samples - window_seconds * sfreq) > 1e-6:
+            raise ValueError(
+                f"{window_samples} samples is not {window_seconds}s "
+                f"at {sfreq} Hz"
+            )
+        bounds = pre_n2_window_bounds(
+            raw.n_times, sfreq, window_samples, n2_onset
+        )
+        rows = []
+        for start, end in bounds:
+            data = raw.get_data(picks=channels, start=start, stop=end)
+            window_end_s = end / sfreq
+            row = {
+                "subject": subject,
+                "session": session,
+                "window_start_s": start / sfreq,
+                "window_end_s": window_end_s,
+                "target_s": remaining_seconds(
+                    n2_onset, window_end_s, cap_seconds
+                ),
+                "has_official_test": int(has_test),
+            }
+            row.update(extract_features(
+                data * 1e6, sfreq, channels, bands
+            ))
+            rows.append(row)
+        return rows
+    finally:
+        raw.close()
+
+
 def iter_feature_rows(root, cfg, stats):
     """Yield one feature row per 5-second train window."""
     channels = list(cfg["data"]["channels"])

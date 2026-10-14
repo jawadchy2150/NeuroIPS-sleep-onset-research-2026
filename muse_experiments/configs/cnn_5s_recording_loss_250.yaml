@@ -1,0 +1,37 @@
+extends: cnn_5s_recording_loss
+name: cnn_5s_recording_loss_250
+
+# Same architecture, loss, optimizer, and one-recording updates as the
+# 100-recording corrected CNN. The validation subjects are the original
+# seed-33 holdout. They are listed here so a larger table cannot redraw
+# that split.
+
+split:
+  strategy: locked_validation_subjects
+  validation_subjects:
+    - sub-004
+    - sub-007
+    - sub-008
+    - sub-009
+    - sub-032
+    - sub-035
+    - sub-054
+    - sub-058
+    - sub-065
+    - sub-066
+    - sub-068
+    - sub-070
+    - sub-073
+    - sub-086
+    - sub-089
+    - sub-092
+    - sub-093
+
+inputs:
+  features_csv: muse_experiments/results/features/muse_features_250train_locked17_pre_n2.csv
+
+outputs:
+  features_csv: muse_experiments/results/features/muse_features_250train_locked17_pre_n2.csv
+  window_cache: muse_experiments/results/tcn/windows_250train_locked17_pre_n2.dat
+  model_file: muse_experiments/results/models/cnn_5s_recording_loss_250train_locked17_seed42.pt
+  comparison_csv: muse_experiments/results/analysis/cnn_recording_loss_250_comparison.csv

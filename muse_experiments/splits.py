@@ -88,3 +88,28 @@ def official_muse_split(
     train_idx = np.flatnonzero(~val_mask)
     assert_disjoint(subjects[train_idx], subjects[val_idx])
     return train_idx, val_idx
+
+
+def locked_validation_split(subjects, validation_subjects):
+    """Keep a previously chosen subject list in validation.
+
+    Every window from those subjects is validation. Every other subject
+    is training. The list is not recomputed from the table size, so
+    adding recordings cannot move the holdout.
+    """
+    subjects = np.asarray(subjects)
+    locked = {str(subject) for subject in validation_subjects}
+    if not locked:
+        raise ValueError("validation_subjects is empty")
+    present = set(subjects.tolist())
+    missing = locked.difference(present)
+    if missing:
+        sample = sorted(missing)[:5]
+        raise ValueError(f"locked validation subjects missing: {sample}")
+    val_mask = np.array([str(subject) in locked for subject in subjects])
+    val_idx = np.flatnonzero(val_mask)
+    train_idx = np.flatnonzero(~val_mask)
+    if len(val_idx) == 0 or len(train_idx) == 0:
+        raise ValueError("locked split produced an empty side")
+    assert_disjoint(subjects[train_idx], subjects[val_idx])
+    return train_idx, val_idx

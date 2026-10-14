@@ -1,0 +1,15 @@
+extends: cnn_5s
+name: cnn_5s_recording_loss
+
+device: mps
+
+training:
+  # One official recording score per update. 83 training recordings
+  # cannot be split into equal larger chunks, so each update is one
+  # recording and every recording is updated once per epoch.
+  loss: recording_wbmae
+  recordings_per_update: 1
+
+outputs:
+  model_file: muse_experiments/results/models/cnn_5s_recording_loss_100_pre_n2_split33_seed42.pt
+  comparison_csv: muse_experiments/results/analysis/cnn_recording_loss_comparison.csv
