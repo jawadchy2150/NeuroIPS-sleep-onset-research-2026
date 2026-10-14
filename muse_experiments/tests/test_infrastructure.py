@@ -40,10 +40,16 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(cfg["model"]["num_leaves"], 15)
         self.assertTrue(cfg["training"]["sample_weight"])
         self.assertEqual(cfg["split"]["group_column"], "subject")
+        self.assertEqual(cfg["split"]["strategy"], "official_muse_valid")
+        self.assertEqual(cfg["split"]["seed"], 33)
         self.assertEqual(cfg["split"]["val_size"], 0.20)
+        self.assertEqual(cfg["data"]["sampling_hz"], 128)
+        self.assertEqual(cfg["data"]["window_samples"], 640)
+        self.assertTrue(cfg["data"]["stop_at_first_n2"])
         self.assertTrue(
             cfg["outputs"]["model_file"].endswith(
-                "results/models/lightgbm_weighted_100.joblib"
+                "results/models/"
+                "lightgbm_weighted_100_pre_n2_split33.joblib"
             )
         )
         self.assertFalse(
@@ -120,7 +126,9 @@ class LayoutTests(unittest.TestCase):
         weighted = load_config("lightgbm_weighted")
         plain_out = repo_path(plain["outputs"]["model_file"]).resolve()
         weighted_out = repo_path(weighted["outputs"]["model_file"]).resolve()
-        preserved = repo_path(plain["inputs"]["model_file"]).resolve()
+        preserved = (
+            REPO_ROOT / "muse_experiments" / "lightgbm_100.joblib"
+        ).resolve()
         self.assertNotEqual(plain_out, weighted_out)
         self.assertNotEqual(plain_out, preserved)
         self.assertNotEqual(weighted_out, preserved)
@@ -128,7 +136,9 @@ class LayoutTests(unittest.TestCase):
 
     def test_feature_and_analysis_outputs_spare_existing_files(self):
         cfg = load_config("lightgbm_100")
-        existing_csv = repo_path(cfg["inputs"]["features_csv"]).resolve()
+        existing_csv = (
+            REPO_ROOT / "muse_experiments" / "muse_features_100.csv"
+        ).resolve()
         new_csv = repo_path(cfg["outputs"]["features_csv"]).resolve()
         analysis = repo_path(cfg["outputs"]["analysis_csv"]).resolve()
         old_analysis = (
@@ -187,12 +197,15 @@ class FeatureTests(unittest.TestCase):
             cfg["data"]["channels"], cfg["data"]["bands"]
         )
         header = pd.read_csv(
-            repo_path(cfg["inputs"]["features_csv"]), nrows=0
+            REPO_ROOT / "muse_experiments" / "muse_features_100.csv",
+            nrows=0,
         )
-        self.assertEqual(
-            list(header.columns),
-            METADATA_COLUMNS + expected,
-        )
+        old_meta = [
+            column
+            for column in METADATA_COLUMNS
+            if column != "has_official_test"
+        ]
+        self.assertEqual(list(header.columns), old_meta + expected)
 
     def test_extract_features_uses_configured_names(self):
         cfg = load_config("default")
@@ -206,11 +219,13 @@ class FeatureTests(unittest.TestCase):
         )
 
     def test_saved_model_features_exist_in_the_table(self):
-        cfg = load_config("lightgbm_100")
         header = pd.read_csv(
-            repo_path(cfg["inputs"]["features_csv"]), nrows=0
+            REPO_ROOT / "muse_experiments" / "muse_features_100.csv",
+            nrows=0,
         )
-        saved = joblib.load(repo_path(cfg["inputs"]["model_file"]))
+        saved = joblib.load(
+            REPO_ROOT / "muse_experiments" / "lightgbm_100.joblib"
+        )
         missing = [
             name for name in saved["features"] if name not in header.columns
         ]
@@ -265,6 +280,7 @@ class TrainingSmokeTests(unittest.TestCase):
             "window_start_s": [0, 5, 0, 5],
             "window_end_s": [5, 10, 5, 10],
             "target_s": [10.0, 50.0, 100.0, 400.0],
+            "has_official_test": [0, 0, 0, 0],
             "TP9_std_uv": [0.1, 0.2, 0.3, 0.4],
             "AF7_std_uv": [1.0, 1.0, 1.0, 1.0],
         })

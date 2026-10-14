@@ -9,7 +9,6 @@ if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
 import mne
-import numpy as np
 
 from muse_experiments.config import load_config
 from muse_experiments.io import publish_file, repo_path
@@ -17,6 +16,8 @@ from muse_experiments.preprocessing.features import (
     METADATA_COLUMNS,
     extract_features,
     feature_columns,
+    pre_n2_window_bounds,
+    remaining_seconds,
 )
 
 
@@ -28,6 +29,16 @@ def get_split(root, subject, session):
             if row["session_id"] == session:
                 return row["split"].strip().lower()
     return None
+
+
+def subject_has_official_test(root, subject, test_value):
+    """True when any session for this subject is in the official test split."""
+    path = Path(root) / subject / f"{subject}_sessions.tsv"
+    with path.open(encoding="utf-8-sig") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            if row["split"].strip().lower() == test_value:
+                return True
+    return False
 
 
 def get_n2_onset(vhdr):
@@ -45,9 +56,13 @@ def iter_feature_rows(root, cfg, stats):
     channels = list(cfg["data"]["channels"])
     bands = cfg["data"]["bands"]
     window_seconds = cfg["data"]["window_seconds"]
+    sampling_hz = cfg["data"]["sampling_hz"]
+    window_samples = cfg["data"]["window_samples"]
+    stop_at_n2 = cfg["data"]["stop_at_first_n2"]
     cap_seconds = cfg["data"]["cap_seconds"]
     max_recordings = cfg["data"]["max_recordings"]
     train_value = cfg["split"]["train_value"]
+    test_value = cfg["split"]["test_value"]
     files = sorted(Path(root).rglob("*_eeg.vhdr"))
     processed_subjects = set()
 
@@ -62,6 +77,7 @@ def iter_feature_rows(root, cfg, stats):
             continue
 
         n2_onset = get_n2_onset(vhdr)
+        has_test = subject_has_official_test(root, subject, test_value)
         raw = mne.io.read_raw_brainvision(
             str(vhdr),
             preload=False,
@@ -71,22 +87,44 @@ def iter_feature_rows(root, cfg, stats):
             raw.close()
             continue
 
-        sfreq = raw.info["sfreq"]
-        n_samples = int(window_seconds * sfreq)
+        sfreq = float(raw.info["sfreq"])
+        if abs(sfreq - sampling_hz) > 1e-6:
+            raw.close()
+            print(f"{subject}/{session}: skipped, sampling rate {sfreq}")
+            continue
+        n_samples = int(window_samples)
+        if abs(n_samples - window_seconds * sfreq) > 1e-6:
+            raw.close()
+            raise ValueError(
+                f"{window_samples} samples is not {window_seconds}s "
+                f"at {sfreq} Hz"
+            )
         count = 0
-        for start in range(0, raw.n_times - n_samples + 1, n_samples):
-            end = start + n_samples
+        if stop_at_n2:
+            bounds = pre_n2_window_bounds(
+                raw.n_times, sfreq, n_samples, n2_onset
+            )
+        else:
+            bounds = [
+                (start, start + n_samples)
+                for start in range(
+                    0, raw.n_times - n_samples + 1, n_samples
+                )
+            ]
+        for start, end in bounds:
             data = raw.get_data(picks=channels, start=start, stop=end)
             window_end_s = end / sfreq
-            target = float(np.clip(n2_onset - window_end_s, 0, cap_seconds))
+            target = remaining_seconds(n2_onset, window_end_s, cap_seconds)
             row = {
                 "subject": subject,
                 "session": session,
                 "window_start_s": start / sfreq,
                 "window_end_s": window_end_s,
                 "target_s": target,
+                "has_official_test": int(has_test),
             }
-            row.update(extract_features(data, sfreq, channels, bands))
+            # BrainVision via MNE is volts. The warm-up tensor is microvolts.
+            row.update(extract_features(data * 1e6, sfreq, channels, bands))
             count += 1
             yield row
 

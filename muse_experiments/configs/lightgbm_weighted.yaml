@@ -5,8 +5,8 @@ training:
   sample_weight: true
 
 inputs:
-  model_file: muse_experiments/results/models/lightgbm_weighted_100.joblib
+  model_file: muse_experiments/results/models/lightgbm_weighted_100_pre_n2_split33.joblib
 
 outputs:
-  model_file: muse_experiments/results/models/lightgbm_weighted_100.joblib
-  analysis_csv: muse_experiments/results/analysis/lightgbm_weighted_100_error_analysis.csv
+  model_file: muse_experiments/results/models/lightgbm_weighted_100_pre_n2_split33.joblib
+  analysis_csv: muse_experiments/results/analysis/lightgbm_weighted_100_pre_n2_split33_error_analysis.csv

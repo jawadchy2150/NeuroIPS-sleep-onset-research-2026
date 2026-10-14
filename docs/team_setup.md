@@ -90,11 +90,13 @@ That step is large. Do not start it on a laptop that already has the files.
 
 ## Reproduce the current experiments
 
-From the repo root, with `sleep-onset-2026` active. New runs read the
-existing feature table and write new files under `muse_experiments/results/`.
-They leave `muse_features_100.csv`, `lightgbm_100.joblib`, and
-`lightgbm_error_analysis.csv` in place. If a destination already exists,
-the run adds a timestamp instead of replacing it.
+From the repo root, with `sleep-onset-2026` active. Corrected runs write
+under `muse_experiments/results/` and leave `muse_features_100.csv`,
+`lightgbm_100.joblib`, and `lightgbm_error_analysis.csv` in place. If a
+destination already exists, the run adds a timestamp instead of replacing
+it. The corrected 100-recording table and both LightGBM checkpoints are
+already in `muse_experiments/results/`. Scores are in
+`docs/muse_codabench.md`.
 
 ```bash
 python -m muse_experiments.preprocessing.prepare_muse_features
@@ -126,12 +128,13 @@ under `tracks/sleep_onset/outputs/`.
 
 ## Scores
 
-Sleep-EDF warmup numbers from this repository are binned MAE and plain MAE
-in `tracks/sleep_onset/objective.py`. The sealed Muse ranking is
-severity-weighted binned MAE, macro-averaged over seen and unseen sleepers.
-That scorer is not in this repository yet. The LightGBM "Approximate
-W-bMAE" printout is a local diagnostic on a subject holdout of the train
-split, not a leaderboard score.
+This checkout's `tracks/sleep_onset/objective.py` still reports unweighted
+binned MAE. The Muse warm-up score is weighted binned MAE inside each
+recording, then the mean across recordings. That calculation is in
+`muse_experiments/evaluation/metrics.py`. The earlier LightGBM figure of
+68.25 s came from a table that kept windows after N2, so it is not a
+competition result. Packaging and the corrected run are described in
+`docs/muse_codabench.md`.
 
 ## Where the team scripts live
 

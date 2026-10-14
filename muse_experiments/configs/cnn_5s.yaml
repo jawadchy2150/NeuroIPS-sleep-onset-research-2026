@@ -1,0 +1,9 @@
+extends: tcn_120s
+name: cnn_5s
+
+model:
+  history_windows: 1
+  use_temporal: false
+
+outputs:
+  model_file: muse_experiments/results/models/cnn_5s_100_pre_n2_split33_seed42.pt

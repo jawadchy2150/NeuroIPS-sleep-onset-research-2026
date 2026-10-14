@@ -12,39 +12,31 @@ import numpy as np
 import pandas as pd
 
 from muse_experiments.config import load_config
+from muse_experiments.evaluation.metrics import binned_mae, weighted_bmae
 from muse_experiments.io import publish_file, repo_path
 from muse_experiments.training.lightgbm_run import split_subjects
 
-RANGES = (
-    ("After N2 / 0s", lambda frame: frame["target_s"] == 0),
-    (
-        "1-40s",
-        lambda frame: (frame["target_s"] > 0) & (frame["target_s"] < 40),
-    ),
-    (
-        "40-90s",
-        lambda frame: (frame["target_s"] >= 40) & (frame["target_s"] < 90),
-    ),
-    (
-        "90-300s",
-        lambda frame: (frame["target_s"] >= 90) & (frame["target_s"] < 300),
-    ),
-    (
-        "300-599s",
-        lambda frame: (frame["target_s"] >= 300) & (frame["target_s"] < 600),
-    ),
-    ("600s", lambda frame: frame["target_s"] == 600),
-)
+
+def _bin_mask(target, low, high, last):
+    if last:
+        return (target >= low) & (target <= high)
+    return (target >= low) & (target < high)
 
 
-def error_table(validation):
+def error_table(validation, edges):
+    """MAE, mean prediction, and bias inside each official target bin."""
     rows = []
-    for name, mask_fn in RANGES:
-        subset = validation[mask_fn(validation)]
+    target = validation["target_s"]
+    for index in range(len(edges) - 1):
+        low = float(edges[index])
+        high = float(edges[index + 1])
+        last = index == len(edges) - 2
+        label = f"[{low:g}, {high:g}]" if last else f"[{low:g}, {high:g})"
+        subset = validation[_bin_mask(target, low, high, last)]
         if subset.empty:
             continue
         rows.append({
-            "Range": name,
+            "Range": label,
             "Windows": len(subset),
             "MAE": round(subset["abs_error"].mean(), 2),
             "Avg prediction": round(subset["prediction"].mean(), 2),
@@ -78,10 +70,23 @@ def analyze(cfg):
         validation["prediction"] - validation["target_s"]
     )
 
+    bins = cfg["evaluation"]["bins"]
+    bin_weights = cfg["evaluation"]["bin_weights"]
     print("Validation participants:", validation["subject"].nunique())
     print("Validation windows:", len(validation))
     print("Overall MAE:", round(validation["abs_error"].mean(), 2))
-    table = error_table(validation)
+    score = weighted_bmae(
+        validation,
+        validation["prediction"].to_numpy(),
+        bins,
+        bin_weights,
+    )
+    print("W-bMAE (mean over recordings):", round(score, 2))
+    pooled = binned_mae(
+        validation["target_s"], validation["prediction"], bins, None
+    )
+    print("Pooled unweighted bMAE:", round(pooled, 2))
+    table = error_table(validation, bins)
     print("\nError analysis by time range:")
     print(table.to_string(index=False))
     subject_errors = (

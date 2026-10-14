@@ -1,0 +1,32 @@
+extends: default
+name: tcn_120s
+
+model:
+  type: temporal_cnn
+  # 24 windows of 5 s, including the window being scored.
+  history_windows: 24
+  use_temporal: true
+  width: 32
+  kernel_size: 3
+  dilations: [1, 2, 4, 8]
+  dropout: 0.1
+  # Fixed microvolt divisor. It is not estimated from the dataset.
+  uv_scale: 100.0
+
+training:
+  max_epochs: 15
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  num_workers: 0
+
+evaluation:
+  cap_seconds: 600
+  bins: [0, 40, 90, 300, 600]
+  bin_weights: [10, 5, 3, 1]
+
+outputs:
+  window_cache: muse_experiments/results/tcn/windows_100_pre_n2.dat
+  model_file: muse_experiments/results/models/tcn_120s_100_pre_n2_split33_seed42.pt

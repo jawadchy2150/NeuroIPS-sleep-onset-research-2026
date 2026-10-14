@@ -12,19 +12,22 @@ paths:
   results_dir: muse_experiments/results
 
 inputs:
-  # Read-only. These are the artifacts already on disk.
-  features_csv: muse_experiments/muse_features_100.csv
-  model_file: muse_experiments/lightgbm_100.joblib
+  # Corrected pre-N2 table. The earlier muse_features_100.csv stays in place.
+  features_csv: muse_experiments/results/features/muse_features_100_pre_n2.csv
+  model_file: muse_experiments/results/models/lightgbm_100_pre_n2_split33.joblib
 
 outputs:
-  # New runs write here. Existing files above are not the destination.
-  features_csv: muse_experiments/results/features/muse_features_100.csv
-  model_file: muse_experiments/results/models/lightgbm_100.joblib
-  analysis_csv: muse_experiments/results/analysis/lightgbm_100_error_analysis.csv
+  features_csv: muse_experiments/results/features/muse_features_100_pre_n2.csv
+  model_file: muse_experiments/results/models/lightgbm_100_pre_n2_split33.joblib
+  analysis_csv: muse_experiments/results/analysis/lightgbm_100_pre_n2_split33_error_analysis.csv
   figures_dir: muse_experiments/results/figures
 
 data:
   window_seconds: 5
+  sampling_hz: 128
+  window_samples: 640
+  # Windows end at or before first N2. Nothing after onset is kept.
+  stop_at_first_n2: true
   cap_seconds: 600
   max_recordings: 100
   channels: [TP9, AF7, AF8, TP10]
@@ -36,10 +39,14 @@ data:
     beta: [16, 30]
 
 split:
-  strategy: group_shuffle_by_subject
+  # 20% of subjects who have no official test recording. Seed 33 matches
+  # NeuralBench PredefinedSplit.valid_random_state. Subjects are sorted
+  # before the split so the cut does not depend on file order.
+  strategy: official_muse_valid
   group_column: subject
   val_size: 0.20
-  seed: 42
+  seed: 33
   # Official Muse sessions.tsv column. Feature prep keeps only "train".
   official_column: split
   train_value: train
+  test_value: test

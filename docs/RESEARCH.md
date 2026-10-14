@@ -73,7 +73,12 @@ Muse download follows `tracks/sleep_onset/README.md`. Set
 Optional variables are listed in `.env.example`.
 
 Feature extraction keeps recordings whose official `sessions.tsv` split
-is `train`. LightGBM then holds out 20% of those subjects.
+is `train`, and stops at the first N2. Subjects who also have a test
+recording stay in training. Validation is 20% of the remaining subjects
+with `train_test_split` and `random_state=33`. The earlier
+`muse_features_100.csv` still includes windows after N2; do not treat
+its 68.25 s score as a competition result. See
+[`docs/muse_codabench.md`](muse_codabench.md).
 
 ## Reproduce
 
@@ -86,7 +91,12 @@ python -m muse_experiments.preprocessing.prepare_muse_features
 python -m muse_experiments.training.train_lightgbm
 python -m muse_experiments.training.train_lightgbm_weighted
 python -m muse_experiments.evaluation.analyze_lightgbm
+python -m muse_experiments.evaluation.compare_lightgbm
 ```
+
+Those commands expect the corrected feature table. It is not built yet.
+Do not run the 100-recording extraction, and do not run NeuralBench
+`--prepare`, until that work is approved.
 
 Benchopt baseline:
 
@@ -97,9 +107,12 @@ benchopt run tracks/sleep_onset --config tracks/sleep_onset/training.yml
 The 30-epoch EEGNet solver is `EEGNet-30epochs` in
 `tracks/sleep_onset/solvers/eegnet_30epochs.py`.
 
-Sleep-EDF scores from this repository are binned MAE and plain MAE in
-`tracks/sleep_onset/objective.py`. The LightGBM weighted score is a
-local check on the train split, not a Codabench result.
+This checkout's `tracks/sleep_onset/objective.py` still reports the older
+unweighted binned MAE. The warm-up W-bMAE used for the corrected LightGBM
+runs is implemented in `muse_experiments/evaluation/metrics.py` from the
+organizers' current metric: weighted bin MAEs inside each recording,
+then the mean across recordings. It is not a Codabench result until a
+submission is scored there.
 
 ## Local compatibility fix
 
