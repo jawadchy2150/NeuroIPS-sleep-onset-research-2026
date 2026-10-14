@@ -1,0 +1,13 @@
+# Extra packages for the Muse research scripts.
+#
+# Install into the environment that already has the competition stack.
+# Do not pass --upgrade, and do not reinstall torch from this file.
+# macOS keeps its current CPU/MPS torch. AWS should install the CUDA wheel
+# the way tools/Dockerfile does (cu126) before this file.
+#
+# Pinned to the versions already working in the local sleep-onset-2026
+# environment so a fresh teammate environment matches it.
+
+lightgbm==4.7.0
+joblib==1.6.0
+PyYAML==6.0.3

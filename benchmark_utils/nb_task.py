@@ -97,7 +97,6 @@ def _task_data_config(modality, task, dataset, data_dir, overrides):
         # sharing, which warns on each one when the data is mounted
         # read-only; None disables the chmod. Only exca infras take it —
         # the study source is a neuralset model that rejects the key.
-        "neuro.infra.permissions": None,
     })
     # Force serial extraction when set (NEURALBENCH_EXTRACT_CPUS=1): the neuro
     # and target exca extractors (cpus_per_task=10, cluster=auto) hammer the

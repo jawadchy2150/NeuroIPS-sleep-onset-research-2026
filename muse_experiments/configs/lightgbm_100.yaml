@@ -1,0 +1,20 @@
+extends: default
+name: lightgbm_100
+
+model:
+  type: LGBMRegressor
+  n_estimators: 300
+  learning_rate: 0.03
+  num_leaves: 15
+  min_child_samples: 40
+  random_state: 42
+  n_jobs: 4
+  verbosity: -1
+
+training:
+  sample_weight: false
+
+evaluation:
+  cap_seconds: 600
+  bins: [0, 40, 90, 300, 600]
+  bin_weights: [10, 5, 3, 1]

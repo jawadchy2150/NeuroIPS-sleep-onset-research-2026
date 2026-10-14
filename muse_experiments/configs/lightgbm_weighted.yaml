@@ -1,0 +1,12 @@
+extends: lightgbm_100
+name: lightgbm_weighted
+
+training:
+  sample_weight: true
+
+inputs:
+  model_file: muse_experiments/results/models/lightgbm_weighted_100.joblib
+
+outputs:
+  model_file: muse_experiments/results/models/lightgbm_weighted_100.joblib
+  analysis_csv: muse_experiments/results/analysis/lightgbm_weighted_100_error_analysis.csv

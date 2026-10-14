@@ -1,0 +1,45 @@
+# Shared defaults for team Muse experiments.
+# device: auto uses CUDA when present, then Apple MPS, then CPU.
+# Override a single run with MUSE_DEVICE=cpu|mps|cuda.
+
+seed: 42
+device: auto
+
+paths:
+  # Empty until NEURALBENCH_MUSE_ROOT is set. The loader then fills the
+  # NeuralBench cache path used by the feature script.
+  muse_data_root: ${NEURALBENCH_MUSE_ROOT}
+  results_dir: muse_experiments/results
+
+inputs:
+  # Read-only. These are the artifacts already on disk.
+  features_csv: muse_experiments/muse_features_100.csv
+  model_file: muse_experiments/lightgbm_100.joblib
+
+outputs:
+  # New runs write here. Existing files above are not the destination.
+  features_csv: muse_experiments/results/features/muse_features_100.csv
+  model_file: muse_experiments/results/models/lightgbm_100.joblib
+  analysis_csv: muse_experiments/results/analysis/lightgbm_100_error_analysis.csv
+  figures_dir: muse_experiments/results/figures
+
+data:
+  window_seconds: 5
+  cap_seconds: 600
+  max_recordings: 100
+  channels: [TP9, AF7, AF8, TP10]
+  bands:
+    delta: [0.5, 4]
+    theta: [4, 8]
+    alpha: [8, 13]
+    sigma: [11, 16]
+    beta: [16, 30]
+
+split:
+  strategy: group_shuffle_by_subject
+  group_column: subject
+  val_size: 0.20
+  seed: 42
+  # Official Muse sessions.tsv column. Feature prep keeps only "train".
+  official_column: split
+  train_value: train

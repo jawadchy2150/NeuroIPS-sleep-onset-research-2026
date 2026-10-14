@@ -18,3 +18,40 @@ worktrees/
 debug_submissions/
 tracks/*/solvers/*.npz
 .claude/
+
+# Team research files. These rules do not delete anything already on disk.
+# Official ignores above still apply (data/, outputs/, __cache__/, *.csv, *.zip).
+
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# Credentials and local cloud config copied into the repo.
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Checkpoints and serialized models.
+*.joblib
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Exploration figures written at the repo root.
+/eeg_preview.png
+/eeg_5s_before_n2.png
+
+# Future team run artifacts. Existing models stay on disk; Git will not add them.
+muse_experiments/results/**
+!muse_experiments/results/.gitkeep
+
+wandb/
+mlruns/
