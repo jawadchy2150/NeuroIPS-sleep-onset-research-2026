@@ -113,3 +113,78 @@ def locked_validation_split(subjects, validation_subjects):
         raise ValueError("locked split produced an empty side")
     assert_disjoint(subjects[train_idx], subjects[val_idx])
     return train_idx, val_idx
+
+
+def _label_key(value):
+    """Sort ``sub-010`` after ``sub-002`` and ``ses-010`` after ``ses-002``."""
+    text = str(value)
+    digits = ""
+    for char in reversed(text):
+        if not char.isdigit():
+            break
+        digits = char + digits
+    prefix = text[: len(text) - len(digits)]
+    return (prefix, int(digits) if digits else -1)
+
+
+def assign_subject_folds(subjects, n_splits=5, seed=42):
+    """Map each subject to one fold. Every subject appears once."""
+    from sklearn.model_selection import KFold
+
+    names = sorted({str(subject) for subject in subjects}, key=_label_key)
+    if len(names) < n_splits:
+        raise ValueError(
+            f"{len(names)} subjects cannot fill {n_splits} folds"
+        )
+    splitter = KFold(
+        n_splits=n_splits, shuffle=True, random_state=seed
+    )
+    assignment = {}
+    for fold, (_train_idx, val_idx) in enumerate(splitter.split(names)):
+        for index in val_idx:
+            assignment[names[int(index)]] = int(fold) + 1
+    if set(assignment.values()) != set(range(1, n_splits + 1)):
+        raise RuntimeError("a cross-validation fold is empty")
+    if len(assignment) != len(names):
+        raise RuntimeError("a subject is missing from the fold map")
+    return assignment
+
+
+def round_robin_recordings(pairs):
+    """One session from each subject, then the next session, in id order."""
+    grouped = {}
+    for subject, session in pairs:
+        grouped.setdefault(str(subject), set()).add(str(session))
+    subjects = sorted(grouped, key=_label_key)
+    ordered = {
+        subject: sorted(grouped[subject], key=_label_key)
+        for subject in subjects
+    }
+    longest = max((len(item) for item in ordered.values()), default=0)
+    rows = []
+    for pass_index in range(longest):
+        for subject in subjects:
+            sessions = ordered[subject]
+            if pass_index < len(sessions):
+                rows.append((subject, sessions[pass_index]))
+    return rows
+
+
+def select_training_recordings(pairs, blocked, count):
+    """Recordings outside ``blocked``, capped at ``count``."""
+    blocked = {str(subject) for subject in blocked}
+    allowed = [
+        (str(subject), str(session))
+        for subject, session in pairs
+        if str(subject) not in blocked
+    ]
+    ordered = round_robin_recordings(allowed)
+    if len(ordered) < count:
+        raise ValueError(
+            f"only {len(ordered)} recordings are available, need {count}"
+        )
+    chosen = ordered[:count]
+    leaked = sorted({subject for subject, _session in chosen} & blocked)
+    if leaked:
+        raise ValueError(f"blocked subjects entered training: {leaked[:5]}")
+    return chosen
